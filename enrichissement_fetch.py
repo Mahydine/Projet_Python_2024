@@ -27,32 +27,37 @@ def get_epss_score(cve_ids):
     # Configuration du logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
-    try:
-        # Le convertir en liste si un seul ID est fourni
-        if isinstance(cve_ids, str):
-            cve_ids = [cve_ids]
-        elif not isinstance(cve_ids, list):
-            raise ValueError("Le paramètre 'cve_ids' doit être une chaîne de caractères ou une liste.")
+    batch_size = 100  # Taille maximale autorisée par requête
     
-        # Créer l'URL avec les CVE ID séparés par des virgules
-        cve_param = ",".join(cve_ids)
-
-        url = f"https://api.first.org/data/v1/epss?cve={cve_param}"
-        response = requests.get(url)
-        response.raise_for_status()
+    try:
+        for i in range(0, len(cve_ids), batch_size):
+            cve_ids_batched = cve_ids[i:i + batch_size]
         
-        time.sleep(1)  # Réduction de la pause pour optimisation
-
-        data = response.json()
-        epss_data = data.get("data", [])
-
-        results = []
-        for cve_score in epss_data:
-            results.append({
-                "Identifiant CVE": cve_score['cve'],
-                "Score EPSS": cve_score['epss']
-            })
-        
+            # Le convertir en liste si un seul ID est fourni
+            if isinstance(cve_ids_batched, str):
+                cve_ids_batched = [cve_ids_batched]
+            elif not isinstance(cve_ids_batched, list):
+                raise ValueError("Le paramètre 'cve_ids_batched' doit être une chaîne de caractères ou une liste.")
+    
+            # Créer l'URL avec les CVE ID séparés par des virgules
+            cve_param = ",".join(cve_ids_batched)
+    
+            url = f"https://api.first.org/data/v1/epss?cve={cve_param}"
+            response = requests.get(url)
+            response.raise_for_status()
+            
+            time.sleep(1)  # Réduction de la pause pour optimisation
+    
+            data = response.json()
+            epss_data = data.get("data", [])
+    
+            results = []
+            for cve_score in epss_data:
+                results.append({
+                    "Identifiant CVE": cve_score['cve'],
+                    "Score EPSS": cve_score['epss']
+                })
+                
         return pd.DataFrame(results)
     
     except Exception as e:

@@ -1,11 +1,19 @@
 import feedparser
 import pandas as pd
 import requests
-import re
+
+#------- temporaire
+import warnings
+warnings.filterwarnings("ignore", category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
+#----------------------
 
 def fetch_bulletins_to_df(url):
-    # Parse the RSS feed
-    rss_feed = feedparser.parse(url)
+    # Télécharger le contenu RSS avec requests
+    response = requests.get(url)
+    response.raise_for_status()  # Vérifier les erreurs HTTP
+    
+    # Parser le contenu avec feedparser
+    rss_feed = feedparser.parse(response.text)
 
     # Create lists to store the data
     titles = []
@@ -31,7 +39,7 @@ def fetch_bulletins_to_df(url):
 
 
 def fetch_cert_json_to_dict(url):
-    response = requests.get(url)
+    response = requests.get(url, verify=False)
     
     if response.status_code != 200:
         print(f"Failed to fetch data. HTTP Status Code: {response.status_code}")

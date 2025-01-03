@@ -9,7 +9,6 @@ import pandas as pd
 import logging
 import rss_fetch, enrichissement_fetch, services
 
-
 def consolidate_data(rss_url):
     """
     Consolidate data into a single DataFrame with all required information.
@@ -22,10 +21,11 @@ def consolidate_data(rss_url):
     """
     # Fetch RSS data
     rss_data = rss_fetch.fetch_bulletins_to_df(rss_url)
-
+    
     consolidated_data = []
 
-    for index, row in rss_data.iterrows():
+    for index, row in rss_data.head(5).iterrows():
+        print(f'Traitement de la ligne : {index}')
         try:
             # Extract bulletin details
             title = row['title']
@@ -43,7 +43,7 @@ def consolidate_data(rss_url):
 
             for cve_id in cert_data.get('cves'):
                 epss_score = epss_df.loc[epss_df['Identifiant CVE'] == cve_id, 'Score EPSS'].iloc[0] if cve_id in epss_df['Identifiant CVE'].values else "N/A"
-                
+
                 # Get CVSS, CWE, and affected product details
                 cve_details_df = enrichissement_fetch.get_cvss_cwe(cve_id)
                 if cve_details_df is not None and not cve_details_df.empty:
@@ -74,7 +74,7 @@ def consolidate_data(rss_url):
 # Exemple d'utilisation
 rss_url = "https://www.cert.ssi.gouv.fr/avis/feed"  # Remplacez par l'URL de l'RSS ANSSI
 final_df = consolidate_data(rss_url)
-
+print(final_df)
 # Sauvegarder dans un fichier CSV ou afficher
 #final_df.to_csv("consolidated_cve_data.csv", index=False)
 
