@@ -36,12 +36,13 @@ def fetch_cert_json_to_dict(url):
     if response.status_code != 200:
         print(f"Failed to fetch data. HTTP Status Code: {response.status_code}")
         return []
-
+    
     data = response.json()
+    
     full_data = {
         'title': data.get('title', ''),
         'content': data.get('content', ''),
-        'cves': data.get('cves', []),
+        'cves': [cve.get('name') for cve in data.get('cves', []) if 'name' in cve],
         'reference': data.get('reference', ''),
         'affected_systems': data.get('affected_systems', [])
     }

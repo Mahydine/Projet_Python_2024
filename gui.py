@@ -1,88 +1,191 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk
+from tkinter import scrolledtext
+import webbrowser
 
-# Fonction pour afficher les détails d'un bulletin
-def show_details(bulletin):
-    """
-    Affiche les détails d'un bulletin dans une fenêtre Toplevel.
-    """
-    # Extraire les informations du bulletin
-    title = bulletin.get('title', 'No title')
-    content = bulletin.get('content', 'No content')
-    reference = bulletin.get('reference', 'No reference')
-    affected_systems = bulletin.get('affected_systems', [])
-    cves = bulletin.get('cves', [])
-    
-    # Créer une nouvelle fenêtre pour afficher les détails
-    details_window = tk.Toplevel()
-    details_window.title(f"Détails de l'alerte : {title}")
-    
-    # Afficher les détails du bulletin
-    tk.Label(details_window, text=f"Title: {title}", font=("Arial", 14)).pack(pady=10)
-    tk.Label(details_window, text=f"Content: {content}", wraplength=400).pack(pady=10)
-    tk.Label(details_window, text=f"Reference: {reference}", font=("Arial", 10)).pack(pady=5)
-    
-    # Liste des systèmes affectés
-    if affected_systems:
-        tk.Label(details_window, text="Affected Systems:", font=("Arial", 12, "bold")).pack(pady=10)
-        for system in affected_systems:
-            # On utilise get pour éviter une erreur si "description" n'existe pas
-            desc = system.get("description", "No description")
-            tk.Label(details_window, text=desc).pack(pady=3)
-    
-    # Ajouter un bouton pour afficher les CVEs
-    tk.Button(
-        details_window, 
-        text="Voir les CVEs", 
-        command=lambda: show_cves(cves, details_window)
-    ).pack(pady=20)
-
-
-# Fonction pour afficher les CVEs d'un bulletin
-def show_cves(cves, parent_window):
-    """
-    Crée une nouvelle fenêtre qui affiche la liste des CVEs.
-    """
-    if not cves:
-        messagebox.showinfo("No CVEs", "Aucune CVE trouvée pour ce bulletin.")
-        return
-    
-    # Créer une nouvelle fenêtre pour afficher les CVEs
-    cve_window = tk.Toplevel(parent_window)
-    cve_window.title("Liste des CVEs")
-    
-    # Afficher la liste des CVEs
-    for cve in cves:
-        cve_name = cve.get("name", "Unknown CVE")
-        cve_url = cve.get("url", "No URL")
-        cve_text = f"CVE Name: {cve_name}\nURL: {cve_url}"
-        tk.Label(cve_window, text=cve_text, justify="left", font=("Arial", 10)).pack(pady=5)
-
-
-# Fonction principale pour afficher les bulletins
 def display_bulletins(bulletins_list):
     """
     Affiche tous les bulletins contenus dans bulletins_list
     dans une fenêtre Tkinter. Chaque bulletin est un dictionnaire
     avec au minimum les clés 'title', 'content', 'reference',
     'affected_systems', 'cves'.
-    """
-    # Créer la fenêtre principale
-    window = tk.Tk()
-    window.title("Exploration des Bulletins ANSSI")
-        
-    tk.Label(window, text="Liste des Bulletins", font=("Arial", 16)).pack(pady=20)
     
-    # Créer un bouton pour chaque bulletin
+    - Liste des bulletins à gauche (Listbox + scrollbar).
+    - Zone de détails à droite avec scrollbars pour 'content', 'affected_systems' et 'cves'.
+    - Pas de popup (navigation dans la même fenêtre).
+    """
+
+    # -------------------------
+    # Configuration de la fenêtre principale
+    # -------------------------
+    root = tk.Tk()
+    root.title("Exploration des Bulletins ANSSI")
+    root.geometry("1000x600")  # Taille par défaut
+
+    # Utiliser ttk pour un look plus moderne
+    style = ttk.Style(root)
+    style.theme_use("clam")  # Possible : "clam", "alt", "default", "vista"…
+
+    # Configuration d'un style général
+    style.configure("TFrame", background="#F4F4F4")
+    style.configure("TLabel", background="#F4F4F4", foreground="#333333")
+    style.configure("TButton", background="#E0E0E0", foreground="#000")
+
+    # -------------------------
+    # Cadre principal
+    # -------------------------
+    main_frame = ttk.Frame(root)
+    main_frame.pack(fill="both", expand=True)
+
+    # Label de titre (en haut)
+    header_label = ttk.Label(main_frame, text="Liste des Bulletins", font=("Helvetica", 16, "bold"))
+    header_label.pack(pady=10)
+
+    # -------------------------
+    # Cadre du contenu (gauche : liste / droite : détails)
+    # -------------------------
+    content_frame = ttk.Frame(main_frame)
+    content_frame.pack(fill="both", expand=True)
+
+    # =========================
+    # Cadre de gauche (liste de bulletins)
+    # =========================
+    left_frame = ttk.Frame(content_frame)
+    left_frame.pack(side="left", fill="y", padx=10, pady=10)
+
+    list_label = ttk.Label(left_frame, text="Sélectionnez un bulletin :")
+    list_label.pack(anchor="w", padx=5, pady=5)
+
+    # Frame pour Listbox + scrollbar
+    listbox_frame = ttk.Frame(left_frame)
+    listbox_frame.pack(fill="both", expand=True)
+
+    # Scrollbar verticale pour la liste
+    list_scrollbar = ttk.Scrollbar(listbox_frame, orient="vertical")
+    list_scrollbar.pack(side="right", fill="y")
+
+    # Listbox pour afficher les titres
+    bulletin_listbox = tk.Listbox(listbox_frame, yscrollcommand=list_scrollbar.set, height=20)
+    bulletin_listbox.pack(side="left", fill="both", expand=True)
+    list_scrollbar.config(command=bulletin_listbox.yview)
+
+    # =========================
+    # Cadre de droite (détails)
+    # =========================
+    right_frame = ttk.Frame(content_frame)
+    right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+    # Sous-cadre pour les détails (permet de rafraîchir facilement le contenu)
+    detail_frame = ttk.Frame(right_frame)
+    detail_frame.pack(fill="both", expand=True)
+
+    # ------------------------------------------------------------
+    # Fonction pour mettre à jour les détails selon le bulletin sélectionné
+    # ------------------------------------------------------------
+    def update_details(event=None):
+        # Récupère l'index du bulletin sélectionné dans la Listbox
+        selection = bulletin_listbox.curselection()
+        if not selection:
+            return
+        index = selection[0]
+        bulletin = bulletins_list[index]
+
+        # On vide le contenu précédent du detail_frame
+        for widget in detail_frame.winfo_children():
+            widget.destroy()
+
+        # Extraire les infos du bulletin
+        title = bulletin.get('title', 'No title')
+        content = bulletin.get('content', 'No content')
+        reference = bulletin.get('reference', 'No reference')
+        affected_systems = bulletin.get('affected_systems', [])
+        cves = bulletin.get('cves', [])
+
+        # Titre du bulletin
+        lbl_title = ttk.Label(detail_frame, text=title, font=("Helvetica", 14, "bold"))
+        lbl_title.pack(pady=5, anchor="w")
+
+        # Référence
+        lbl_reference = ttk.Label(detail_frame, text=f"Référence : {reference}", font=("Helvetica", 9, "italic"))
+        lbl_reference.pack(pady=5, anchor="w")
+
+        # -------------------------
+        # Zone de texte défilable pour la description (content)
+        # -------------------------
+        content_label = ttk.Label(detail_frame, text="Description :", font=("Helvetica", 10, "bold"))
+        content_label.pack(pady=(10, 0), anchor="w")
+
+        content_text = scrolledtext.ScrolledText(detail_frame, wrap="word", width=60, height=8)
+        content_text.pack(pady=5, fill="both", expand=False)
+        content_text.insert("end", content)
+        content_text.config(state="disabled")  # Rendre la zone non-éditable
+
+        # -------------------------
+        # Systèmes affectés
+        # -------------------------
+        if affected_systems:
+            affected_label = ttk.Label(detail_frame, text="Systèmes affectés :", font=("Helvetica", 10, "bold"))
+            affected_label.pack(pady=(10, 0), anchor="w")
+
+            aff_frame = ttk.Frame(detail_frame)
+            aff_frame.pack(fill="both", expand=False, pady=5)
+
+            aff_scroll = ttk.Scrollbar(aff_frame, orient="vertical")
+            aff_scroll.pack(side="right", fill="y")
+
+            aff_text = tk.Text(aff_frame, wrap="word", yscrollcommand=aff_scroll.set, height=5)
+            aff_text.pack(side="left", fill="both", expand=True)
+            aff_scroll.config(command=aff_text.yview)
+
+            for system in affected_systems:
+                desc = system.get("description", "No description")
+                aff_text.insert("end", f"- {desc}\n")
+            aff_text.config(state="disabled")
+
+        # -------------------------
+        # Liste des CVEs (scrollable)
+        # -------------------------
+        cve_label = ttk.Label(detail_frame, text="CVEs :", font=("Helvetica", 10, "bold"))
+        cve_label.pack(pady=(10, 0), anchor="w")
+
+        if cves:
+            cve_frame = ttk.Frame(detail_frame)
+            cve_frame.pack(fill="both", expand=False, pady=5)
+
+            cve_scroll = ttk.Scrollbar(cve_frame, orient="vertical")
+            cve_scroll.pack(side="right", fill="y")
+
+            cve_text = tk.Text(cve_frame, wrap="word", yscrollcommand=cve_scroll.set, height=5)
+            cve_text.pack(side="left", fill="both", expand=True)
+            cve_scroll.config(command=cve_text.yview)
+
+            for cve in cves:
+                cve_name = cve.get("name", "Unknown CVE")
+                cve_url = cve.get("url", "No URL")
+
+                # Insérer chaque CVE sous forme de texte
+                if cve_url != "No URL":
+                    # On peut insérer un texte cliquable, mais c'est plus complexe à gérer
+                    # Pour rester simple, on met juste l'URL en texte :
+                    cve_text.insert("end", f"- {cve_name} : {cve_url}\n")
+                else:
+                    cve_text.insert("end", f"- {cve_name}\n")
+
+            cve_text.config(state="disabled")
+
+        else:
+            no_cve_label = ttk.Label(detail_frame, text="Aucune CVE trouvée.")
+            no_cve_label.pack(pady=5, anchor="w")
+
+    # ------------------------------------------------------------
+    # Peuplement de la Listbox avec les titres de bulletins
+    # ------------------------------------------------------------
     for bulletin in bulletins_list:
         title = bulletin.get('title', 'Bulletin sans titre')
-        bulletin_button = tk.Button(
-            window, 
-            text=title, 
-            width=50, 
-            command=lambda b=bulletin: show_details(b)
-        )
-        bulletin_button.pack(pady=5)
-    
-    # Boucle principale de la fenêtre
-    window.mainloop()
+        bulletin_listbox.insert("end", title)
+
+    # Lorsque l'utilisateur sélectionne un élément, on appelle 'update_details'
+    bulletin_listbox.bind("<<ListboxSelect>>", update_details)
+
+    # Lance la boucle principale de l'interface
+    root.mainloop()
