@@ -23,27 +23,47 @@ def consolidate_data(rss_url):
     rss_data = rss_fetch.fetch_bulletins_to_df(rss_url)
     
     consolidated_data = []
+    max_row = 10
 
-    for index, row in rss_data.head(5).iterrows():
-        print(f'Traitement de la ligne : {index}')
+    for index, row in rss_data.head(max_row).iterrows():
+        print(f'[START] traitement de la ligne : {index+1}/{len(rss_data.head(max_row))}')
         try:
             # Extract bulletin details
             title = row['title']
             bulletin_type = "Alerte" if "alerte" in rss_url.lower() else "Avis"
             publication_date = services.date_formatter(row['date'])
             bulletin_link = row['link']
-            
+            print(f'{bulletin_link}')
             #formattage des données nécéssaire, mais étape validée
             
             # Fetch additional data from bulletin link
             cert_data = rss_fetch.fetch_cert_json_to_dict(bulletin_link)
+            
+            #TEMPORAIRE - ce bulletin ne contient que 3 ou 4 CVE enrichissables sur plus de 600
+            #TEMPORAIRE - pour l'instant je le blacklist manuellement mais faut trouver autre chose
+            if(title == "Multiples vulnérabilités dans le noyau Linux d'Ubuntu (13 décembre 2024)"):
+                print('Blacklisted, passage au bulletin suivant.\n')
+                continue
+            
+            #passage au prochain bulletin si aucun CVE
+            if(cert_data.get('cves')== []):
+                print('Aucun CVE trouvé, passage au bulletin suivant.\n')
+                continue
 
             # Get EPSS score
             epss_df = enrichissement_fetch.get_epss_score(cert_data.get('cves'))
 
+            compteur = 1
             for cve_id in cert_data.get('cves'):
-                epss_score = epss_df.loc[epss_df['Identifiant CVE'] == cve_id, 'Score EPSS'].iloc[0] if cve_id in epss_df['Identifiant CVE'].values else "N/A"
-
+                
+                print(f'enrichissement du CVE : {cve_id} - {compteur}/{len(cert_data.get("cves"))}')
+                compteur += 1
+                
+                epss_score = "N/A"
+                
+                if(epss_df is not None and epss_df is not epss_df.empty):
+                    epss_score = epss_df.loc[epss_df['Identifiant CVE'] == cve_id, 'Score EPSS'].iloc[0] if cve_id in epss_df['Identifiant CVE'].values else "N/A"
+                
                 # Get CVSS, CWE, and affected product details
                 cve_details_df = enrichissement_fetch.get_cvss_cwe(cve_id)
                 if cve_details_df is not None and not cve_details_df.empty:
@@ -64,9 +84,12 @@ def consolidate_data(rss_url):
                         "Produit": cve_details["Produit"],
                         "Versions affectées": cve_details["Versions"]
                     })
-
+                    
+            print(f'[END] fin du traitement de la ligne : {index+1} \n')
+                    
         except Exception as e:
-            logging.error(f"Erreur lors du traitement de l'entrée {index}: {e}")
+            return pd.DataFrame(row)
+            print(f"Erreur lors du traitement de l'entrée {index+1}: {e}")
 
     # Create final DataFrame
     return pd.DataFrame(consolidated_data)
@@ -74,7 +97,7 @@ def consolidate_data(rss_url):
 # Exemple d'utilisation
 rss_url = "https://www.cert.ssi.gouv.fr/avis/feed"  # Remplacez par l'URL de l'RSS ANSSI
 final_df = consolidate_data(rss_url)
-print(final_df)
+
 # Sauvegarder dans un fichier CSV ou afficher
 #final_df.to_csv("consolidated_cve_data.csv", index=False)
 

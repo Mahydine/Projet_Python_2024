@@ -29,10 +29,13 @@ def get_epss_score(cve_ids):
     
     batch_size = 100  # Taille maximale autorisée par requête
     
+    if(cve_ids == []):
+        return None
+    
     try:
         for i in range(0, len(cve_ids), batch_size):
             cve_ids_batched = cve_ids[i:i + batch_size]
-        
+
             # Le convertir en liste si un seul ID est fourni
             if isinstance(cve_ids_batched, str):
                 cve_ids_batched = [cve_ids_batched]
@@ -50,6 +53,9 @@ def get_epss_score(cve_ids):
     
             data = response.json()
             epss_data = data.get("data", [])
+            
+            if(epss_data == []):
+                return None
     
             results = []
             for cve_score in epss_data:
@@ -61,7 +67,7 @@ def get_epss_score(cve_ids):
         return pd.DataFrame(results)
     
     except Exception as e:
-        logging.error(f"Erreur lors de la récupération du/des score EPSS pour {cve_ids}: {e}")
+        print(f"Erreur lors de la récupération du/des score EPSS pour {cve_ids_batched}: {e}")
         return "Erreur"
     
 def get_cvss_cwe(cve_id): 
@@ -118,10 +124,9 @@ def get_cvss_cwe(cve_id):
         })
         
         return pd.DataFrame(results)
-
     else:
-        return None
         print(f"Échec de la récupération des données pour {cve_id}. Code statut : {response.status_code}")
+        return None
         
         
 
