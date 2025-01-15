@@ -6,7 +6,6 @@ Created on Fri Jan  3 16:51:01 2025
 """
 
 import pandas as pd
-import logging
 import rss_fetch, enrichissement_fetch, services
 
 def consolidate_data(rss_url):
@@ -55,6 +54,11 @@ def consolidate_data(rss_url):
 
             compteur = 1
             for cve_id in cert_data.get('cves'):
+                
+                # Si on dépasse 10 CVE, on passe directement à la CVE suivante
+                if compteur > 10:
+                    print("Plus de 10 CVEs, on skip cette itération.")
+                    continue
                 
                 print(f'enrichissement du CVE : {cve_id} - {compteur}/{len(cert_data.get("cves"))}')
                 compteur += 1

@@ -10,17 +10,11 @@ Created on Fri Sep 27 13:57:47 2024
 
 
 msg = MIMEText("Hello, tout le monde")  # Corps du courriel
-
 msg['Subject'] = 'Message de test'  # Objet
-
-msg['From'] = 'gledoigt40@gmail.com'
-
-'cvecyber@gmail.com'  # Votre adresse Gmail
-
-msg['To'] = 'cvecyber@gmail.com'  # Adresse Gmail du destinataire
+msg['From'] = 'cvecyber@gmail.com'
+msg['To'] = 'mahydinegame@gmail.com'  # Adresse Gmail du destinataire
 
  
-
 # Se connecter au serveur SMTP de Gmail
 
 s = smtplib.SMTP('smtp.gmail.com', 587)
@@ -31,7 +25,7 @@ s.starttls()
 
 # Connexion à votre compte Gmail
 
-s.login('gledoigt40@gmail.com', 'password')
+s.login('cvecyber@gmail.com', 'royf lmac zbfw mecn')
 
  
 
