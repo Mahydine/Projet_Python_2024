@@ -1,0 +1,7 @@
+Pour etre au courant des nouvelles alertes, comparer les dates de build lors de la requette afin de ne pas process pour rien, si différentes, vérifier seulement les nouvelles, si déjà dans le dataframe pas calculer les cve.
+
+Simuler des utilisateurs,
+
+get les nouveaux bulletins chaque 30 minutes en gros
+
+Faire en Django.

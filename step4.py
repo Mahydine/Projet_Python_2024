@@ -92,12 +92,5 @@ def consolidate_data(rss_url):
             print(f"Erreur lors du traitement de l'entrée {index+1}: {e}")
 
     # Create final DataFrame
+    pd.DataFrame(consolidated_data).to_csv("final_df.csv", index=False)
     return pd.DataFrame(consolidated_data)
-
-# Exemple d'utilisation
-rss_url = "https://www.cert.ssi.gouv.fr/avis/feed"  # Remplacez par l'URL de l'RSS ANSSI
-final_df = consolidate_data(rss_url)
-
-# Sauvegarder dans un fichier CSV ou afficher
-#final_df.to_csv("consolidated_cve_data.csv", index=False)
-
