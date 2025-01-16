@@ -1,6 +1,7 @@
 import feedparser
 import pandas as pd
 import requests
+import services
 
 #------- temporaire
 import warnings
@@ -22,9 +23,6 @@ def fetch_get_build_date(url):
         # Selon le flux, c'est parfois "updated", parfois "published"
         build_date = rss_feed.feed.get("updated", None)
         
-        print("Titre du flux :", rss_feed.feed.title)
-        print("Date de mise à jour du flux :", build_date)
-        
         return build_date  # On la retourne ou on la traite selon vos besoins
 
     return None
@@ -37,11 +35,18 @@ def fetch_bulletin_links(url):
     
     # Parser avec feedparser
     rss_feed = feedparser.parse(response.text)
+    bulletins_links = []
     
     # Récupérer tous les titres des bulletins (entries)
-    links = [entry.link for entry in rss_feed.entries]
+    for entry in rss_feed.entries:
+        bulletins_links.append({
+            "title": entry.title,
+            "link": entry.link,
+            "type": "Alerte" if "alerte" in url.lower() else "Avis",
+            "date": services.date_formatter(entry.published),
+        })
     
-    return links
+    return bulletins_links
 
 def fetch_bulletins_to_df(url):
     # Télécharger le contenu RSS avec requests
@@ -80,7 +85,13 @@ def fetch_cert_json_to_dict(url):
         print(f"Failed to fetch data. HTTP Status Code: {response.status_code} {url}")
         return []
     
-    data = response.json()
+     # Vérifie si la réponse contient un JSON valide
+    try:
+        data = response.json()
+    except ValueError:
+        print(f"Response is not JSON. URL: {url}")
+        return []
+    
     
     full_data = {
         'title': data.get('title', ''),

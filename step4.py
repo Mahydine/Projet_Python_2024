@@ -72,9 +72,9 @@ def consolidate_bulletins_cves(bulletin_link):
         print('Aucun CVE trouvé, passage au bulletin suivant.\n')
         return None
 
-    # Si on dépasse 10 CVE, on passe directement à la CVE suivante
-    if (len(cert_data.get('cves')) >= 10):
-        print("Plus de 10 CVEs, on skip cette itération.")
+    # Si on dépasse 30 CVE, on passe directement à la CVE suivante
+    if (len(cert_data.get('cves')) >= 30):
+        print("Plus de 30 CVEs, on skip cette itération.\n")
         return None
         
 
@@ -116,4 +116,8 @@ def consolidate_bulletins_cves(bulletin_link):
     return consolidate_cves_data
 
 # Exemple d'appel initial : consolidation de données
-final_df = consolidate_data("https://www.cert.ssi.gouv.fr/avis/feed")
+final_df = consolidate_bulletins_cves("https://www.cert.ssi.gouv.fr/avis/CERTFR-2025-AVI-0041/json")
+
+import time
+def testwait():
+    time.sleep(3)
